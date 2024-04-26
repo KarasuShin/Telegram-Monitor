@@ -8,6 +8,7 @@ declare global {
       TG_PHONE: string
       TG_PASSWORD: string
       TG_SESSION?: string
+      TG_RECEIVER?: string
     }
   }
 }

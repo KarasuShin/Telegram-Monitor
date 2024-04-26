@@ -13,7 +13,9 @@ dotenv.config()
 
 const chats = ['karasutest_group', 'karasutest_channel', 'me']
 
-const { TG_API_ID, TG_API_HASH, TG_PASSWORD, TG_PHONE, TG_SESSION } = process.env
+const keyWords: RegExp[] = [/keyword1/, /#keyword2/i]
+
+const { TG_API_ID, TG_API_HASH, TG_PASSWORD, TG_PHONE, TG_SESSION, TG_RECEIVER } = process.env
 
 if (!TG_API_ID || !TG_API_HASH || !TG_PHONE || !TG_PASSWORD) {
   console.error('Please provide all required environment variables')
@@ -47,6 +49,7 @@ async function main() {
   const validChannels: {
     [id: string]: {
       title: string
+      username?: string
     }
   } = {}
 
@@ -56,6 +59,7 @@ async function main() {
         case 'Channel': {
           validChannels[channel.id.toString()] = {
             title: channel.title,
+            username: channel.username,
           }
 
           break
@@ -72,7 +76,6 @@ async function main() {
 
   client.addEventHandler((event: NewMessageEvent) => {
     const { peerId } = event.message
-    console.log(peerId.className)
     let fromEntityId: Api.long | null = null
     switch (peerId.className) {
       case 'PeerUser':
@@ -91,7 +94,21 @@ async function main() {
     const from = validChannels[fromEntityId.toString()]
     const datetime = dayjs(event.message.date * 1e3).format('YYYY-MM-DD HH:mm:ss')
 
-    console.log(`Message from ${from.title}[${datetime}]: ${event.message.message}`)
+    for (const keyword of keyWords) {
+      if (keyword.test(event.message.message)) {
+        console.log(`Message from ${from.title}[${datetime}]: ${event.message.message}`)
+        const messageLink = `https://t.me/${from.username}/${event.message.id}`
+
+        if (TG_RECEIVER) {
+          client.sendMessage(TG_RECEIVER, {
+            message: messageLink,
+          })
+        }
+        break
+      }
+    }
+
+    console.log(event.message)
   }, new NewMessage({
     chats: Object.keys(validChannels),
   }))
